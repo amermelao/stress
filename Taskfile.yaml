@@ -1,0 +1,47 @@
+# https://taskfile.dev
+
+version: '3'
+
+env:
+    CGO_ENABLED: 0
+
+dotenv: [ '.env' ]
+# SSH_PEM=
+# DEPLOY_USER=
+# DEPLOY_SERVER=
+
+tasks:
+    default:
+        silent: true
+        cmds:
+            - task --list-all
+    deploy:
+        cmds:
+            -   task: release-build
+            - ssh -i ${SSH_PEM} ${DEPLOY_USER}@${DEPLOY_SERVER} /home/ubuntu/runtime/stress/kill_stress
+            - scp -i ${SSH_PEM} bin/api ${DEPLOY_USER}@${DEPLOY_SERVER}:/home/ubuntu/runtime/stress
+            - ssh -i ${SSH_PEM} ${DEPLOY_USER}@${DEPLOY_SERVER} /home/ubuntu/runtime/stress/run_stress
+    test:
+        cmds:
+            - go test ./...
+    release-build:
+        cmds:
+            -   task: build-env
+                vars: { OS: 'linux', ARCH: 'amd64' }
+    build:
+        cmds:
+            -   task: build-env
+                vars:
+                    OS:
+                        sh: go env GOOS
+                    ARCH:
+                        sh: go env GOARCH
+    docker:
+        cmds:
+            - docker-compose up -d
+    build-env:
+        internal: true
+        cmds:
+            - GOOS={{ .OS }} GOARCH={{ .ARCH}} go build -o bin/ ./...
+        requires:
+            vars: [ OS, ARCH ]

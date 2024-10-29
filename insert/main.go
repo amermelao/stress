@@ -81,7 +81,7 @@ func insert(name string, users []string) {
 			)
 		} else {
 			req.Header.Add("Content-Type", "application/json")
-			req.Header.Add("Authorization", fmt.Sprintf("Bearrer %s", cfg.Secret))
+			req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", cfg.Secret))
 			client := &http.Client{}
 			response, err := client.Do(req)
 

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log/slog"
 	"net/http"
 	"time"
@@ -35,7 +36,7 @@ func logRequests(next http.Handler) http.Handler {
 
 func secure(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
-		if request.Header.Get("Authorization") == "Bearer 5Mxrg3TkCRq4aMy4PyO8QYA7BiWUqHy9fPlVbSruAlDpGj10ry4mgbbetL79M12S" {
+		if request.Header.Get("Authorization") == fmt.Sprintf("Bearer %s", cfg.Secret) {
 			next.ServeHTTP(writer, request)
 		} else {
 			writer.WriteHeader(http.StatusUnauthorized)

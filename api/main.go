@@ -14,6 +14,7 @@ type config struct {
 	DBName   string `env:"DB_NAME" envDefault:"testcase"`
 	Host     string `env:"DB_HOST" envDefault:"localhost"`
 	Port     int    `env:"DB_PORT" envDefault:"5432"`
+	Secret   string `env:"API_SECRET" envDefault:"shhhh"`
 }
 
 var cfg config

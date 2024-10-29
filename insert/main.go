@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/caarlos0/env/v11"
 	"log/slog"
 	"math/rand/v2"
 	"net/http"
@@ -11,7 +12,20 @@ import (
 	"time"
 )
 
-var authHeader = "Bearer 5Mxrg3TkCRq4aMy4PyO8QYA7BiWUqHy9fPlVbSruAlDpGj10ry4mgbbetL79M12S"
+type config struct {
+	Secret string `env:"API_SECRET" envDefault:"shhhh"`
+}
+
+var cfg config
+
+func init() {
+	if err := env.Parse(&cfg); err != nil {
+		slog.Error("bad init", "error", err.Error())
+	} else {
+		slog.Info("config  loaded")
+	}
+}
+
 var baseUrl = "https://test.bible.clementineleaf.top/stress"
 
 var testNames = []string{"noindex", "tsv", "createatuser"}
@@ -67,14 +81,14 @@ func insert(name string, users []string) {
 			)
 		} else {
 			req.Header.Add("Content-Type", "application/json")
-			req.Header.Add("Authorization", authHeader)
+			req.Header.Add("Authorization", fmt.Sprintf("Bearrer %s", cfg.Secret))
 			client := &http.Client{}
 			response, err := client.Do(req)
 
 			if err != nil {
 				slog.Error("bad request", "error", err.Error())
 			} else if response.StatusCode != http.StatusNoContent {
-				slog.Error("bad status code", "code", string(response.StatusCode))
+				slog.Error("bad status code", "code", response.StatusCode)
 			}
 
 			if counter > 10_000 {

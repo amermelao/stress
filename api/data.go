@@ -61,10 +61,10 @@ func Insert[E Models](db *gorm.DB, data Info) error {
 	return db.Create(rowd).Error
 }
 
-func Get[S ~[]E, E Models](db *gorm.DB, _ string, from, to time.Time) ([]Info, error) {
+func Get[S ~[]E, E Models](db *gorm.DB, user string, from, to time.Time) ([]Info, error) {
 	var data S
 	query := func(db *gorm.DB) *gorm.DB {
-		return db.Where("timestamp > ? and timestamp < ?", from, to).Find(&data)
+		return db.Where("no_indices.user = ? and timestamp > ? and timestamp < ?", user, from, to).Find(&data)
 	}
 
 	fmt.Println(db.ToSQL(query))

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"github.com/caarlos0/env/v11"
 	"log/slog"
@@ -16,6 +17,7 @@ type config struct {
 }
 
 var cfg config
+var dropDB bool
 
 func init() {
 	if err := env.Parse(&cfg); err != nil {
@@ -23,10 +25,22 @@ func init() {
 	} else {
 		slog.Info("good to go")
 	}
+
+	flag.BoolVar(&dropDB, "drop", false, "drop tables and rebuild")
+
+	flag.Parse()
 }
 
 func main() {
+	if dropDB {
+		dropDatabase()
+	} else {
+		runApi()
+	}
 
+}
+
+func dropDatabase() {
 	if db, err := NewConnection(DBSecrets{
 		User:     cfg.User,
 		Password: cfg.Password,
@@ -43,6 +57,23 @@ func main() {
 		)
 	} else if err := AddTables(db); err != nil {
 		slog.Error("fail to make",
+			"error", err.Error(),
+		)
+	} else {
+		slog.Info("all tables dropped")
+	}
+}
+
+func runApi() {
+
+	if db, err := NewConnection(DBSecrets{
+		User:     cfg.User,
+		Password: cfg.Password,
+		DBName:   cfg.DBName,
+		Host:     cfg.Host,
+		Port:     cfg.Port,
+	}); err != nil {
+		slog.Error("fail to connect to db",
 			"error", err.Error(),
 		)
 	} else {

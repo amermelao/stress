@@ -15,6 +15,13 @@ tasks:
         silent: true
         cmds:
             - task --list-all
+    deploy-drop:
+        cmds:
+            -   task: release-build
+            - ssh -i ${SSH_PEM} ${DEPLOY_USER}@${DEPLOY_SERVER} /home/ubuntu/runtime/stress/kill_stress
+            - scp -i ${SSH_PEM} bin/api ${DEPLOY_USER}@${DEPLOY_SERVER}:/home/ubuntu/runtime/stress
+            - ssh -i ${SSH_PEM} ${DEPLOY_USER}@${DEPLOY_SERVER} /home/ubuntu/runtime/stress/drop_stress
+            - ssh -i ${SSH_PEM} ${DEPLOY_USER}@${DEPLOY_SERVER} /home/ubuntu/runtime/stress/run_stress
     deploy:
         cmds:
             -   task: release-build

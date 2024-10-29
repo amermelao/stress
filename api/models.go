@@ -28,7 +28,7 @@ type Model struct {
 	UpdatedAt time.Time
 	DeletedAt gorm.DeletedAt
 	Timestamp time.Time
-	User      string
+	UserName  string
 	Data      JSONB  `gorm:"type:jsonb;default:'{}';not null"`
 	TSV       string `gorm:"->;type:tsvector GENERATED ALWAYS AS (jsonb_to_tsvector('english', data, '[\"string\"]')) STORED"`
 }
@@ -39,7 +39,7 @@ type NoIndex struct {
 
 func (t NoIndex) Info() Info {
 	return Info{
-		User:      t.User,
+		User:      t.UserName,
 		Data:      t.Data,
 		Timestamp: t.Timestamp,
 	}
@@ -47,7 +47,7 @@ func (t NoIndex) Info() Info {
 
 func (t NoIndex) New(info Info) any {
 	me := NoIndex{}
-	me.User = info.User
+	me.UserName = info.User
 	me.Data = info.Data
 	me.Timestamp = info.Timestamp
 
@@ -66,7 +66,7 @@ type TSV struct {
 
 func (t TSV) Info() Info {
 	return Info{
-		User:      t.User,
+		User:      t.UserName,
 		Data:      t.Data,
 		Timestamp: t.Timestamp,
 	}
@@ -74,7 +74,7 @@ func (t TSV) Info() Info {
 
 func (t TSV) New(info Info) any {
 	me := TSV{}
-	me.User = info.User
+	me.UserName = info.User
 	me.Data = info.Data
 	me.Timestamp = info.Timestamp
 
@@ -89,12 +89,12 @@ func (t TSV) String() string {
 type CreateAtUser struct {
 	Model
 	Timestamp time.Time `gorm:"index:idx_,CreateAtUserpriority:2"`
-	User      string    `gorm:"index:idx_,CreateAtUserpriority:1"`
+	UserName  string    `gorm:"index:idx_,CreateAtUserpriority:1"`
 }
 
 func (t CreateAtUser) Info() Info {
 	return Info{
-		User:      t.User,
+		User:      t.UserName,
 		Data:      t.Data,
 		Timestamp: t.Timestamp,
 	}
@@ -102,7 +102,7 @@ func (t CreateAtUser) Info() Info {
 
 func (t CreateAtUser) New(info Info) any {
 	me := CreateAtUser{}
-	me.User = info.User
+	me.UserName = info.User
 	me.Data = info.Data
 	me.Timestamp = info.Timestamp
 

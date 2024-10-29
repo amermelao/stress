@@ -6,6 +6,7 @@ import (
 	"gorm.io/gorm"
 	"log/slog"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -28,6 +29,7 @@ func (t TestCase[E]) Register(base *http.ServeMux) {
 	handler := http.NewServeMux()
 	handler.HandleFunc("GET /query", t.getQuery)
 	handler.HandleFunc("POST /add", t.addElement)
+	handler.HandleFunc("GET /users", t.allUsers)
 
 	slog.Info("add", "path", t.Name)
 
@@ -92,4 +94,25 @@ func (t TestCase[E]) addElement(writer http.ResponseWriter, request *http.Reques
 		}
 	}
 
+}
+
+func (t TestCase[E]) allUsers(writer http.ResponseWriter, request *http.Request) {
+	writer.Header().Add("Content-Type", "application/json")
+
+	if users, err := Users[E](t.db); err != nil {
+		slog.Error("fail to get users",
+			"error", err.Error(),
+			"table", t.Name,
+		)
+		writer.WriteHeader(http.StatusInternalServerError)
+	} else if err := json.NewEncoder(writer).Encode(users); err != nil {
+		slog.Error("fail to encode users",
+			"error", err.Error(),
+			"table", t.Name,
+			"data", strings.Join(users, ","),
+		)
+		writer.WriteHeader(http.StatusInternalServerError)
+	} else {
+
+	}
 }

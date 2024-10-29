@@ -23,7 +23,7 @@ func init() {
 	if err := env.Parse(&cfg); err != nil {
 		slog.Error("bad init", "error", err.Error())
 	} else {
-		slog.Info("good to go")
+		slog.Info("config  loaded")
 	}
 
 	flag.BoolVar(&dropDB, "drop", false, "drop tables and rebuild")
@@ -37,7 +37,6 @@ func main() {
 	} else {
 		runApi()
 	}
-
 }
 
 func dropDatabase() {

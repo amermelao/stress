@@ -64,7 +64,7 @@ func Insert[E Models](db *gorm.DB, data Info) error {
 func Get[S ~[]E, E Models](db *gorm.DB, user string, from, to time.Time) ([]Info, error) {
 	var data S
 	query := func(db *gorm.DB) *gorm.DB {
-		return db.Where("no_indices.user = ? and timestamp > ? and timestamp < ?", user, from, to).Find(&data)
+		return db.Where("user_name = ? and timestamp > ? and timestamp < ?", user, from, to).Find(&data)
 	}
 
 	fmt.Println(db.ToSQL(query))
@@ -77,4 +77,10 @@ func Get[S ~[]E, E Models](db *gorm.DB, user string, from, to time.Time) ([]Info
 		returnInfo = append(returnInfo, a.Info())
 	}
 	return returnInfo, err
+}
+
+func Users[E Models](db *gorm.DB) ([]string, error) {
+	results := []string{}
+	err := db.Model(new(E)).Distinct("user_name").Find(&results).Error
+	return results, err
 }

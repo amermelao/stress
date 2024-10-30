@@ -63,8 +63,23 @@ func insert(name string, users []string) {
 	tNow := time.Now()
 	url := fmt.Sprintf("%s/%s/add", baseUrl, name)
 
+	var wg sync.WaitGroup
+
+	for _, user := range users {
+		wg.Add(1)
+		go func() {
+			insertPerUser(user, url, tNow)
+			wg.Done()
+		}()
+	}
+
+	wg.Wait()
+}
+
+func insertPerUser(user, url string, refTime time.Time) {
 	counter := 0
-	for user, v := range timeIter(tNow.Add(-10*time.Hour), tNow, time.Millisecond, users) {
+
+	for v := range timeIter(refTime.Add(-10*time.Hour), refTime, 10*time.Millisecond) {
 		info := Info{
 			User:      user,
 			Timestamp: v,
@@ -92,21 +107,22 @@ func insert(name string, users []string) {
 			}
 
 			if counter > 10_000 {
-				slog.Info("insert")
+				slog.Info("insert", "time", v.Format(time.RFC3339))
 			}
 			counter++
 		}
 	}
 }
 
-func timeIter(tFrom, tTo time.Time, delta time.Duration, users []string) func(func(string, time.Time) bool) {
+func timeIter(tFrom, tTo time.Time, delta time.Duration) func(func(time.Time) bool) {
 
-	return func(next func(uer string, timestamp time.Time) bool) {
-		for iter := tFrom; iter.Before(tTo); iter = iter.Add(delta) {
-			user := users[rand.IntN(len(users))]
-			if !next(user, iter) {
+	return func(next func(timestamp time.Time) bool) {
+		for iter := tFrom; iter.Before(tTo); {
+			if !next(iter) {
 				return
 			}
+			jitter := time.Duration(rand.IntN(10) + 1)
+			iter = iter.Add(delta * jitter)
 		}
 	}
 }

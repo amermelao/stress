@@ -23,7 +23,6 @@ func (j *JSONB) Scan(value interface{}) error {
 
 // gorm.Model definition
 type Model struct {
-	ID        uint `gorm:"primaryKey"`
 	CreatedAt time.Time
 	UpdatedAt time.Time
 	DeletedAt gorm.DeletedAt
@@ -75,7 +74,7 @@ func (t NoIndex) String() string {
 
 type TSV struct {
 	Model
-	TSV string `gorm:"->;type:tsvector GENERATED ALWAYS AS (jsonb_to_tsvector('english', data, '[\"string\"]')) STORED;index"`
+	TSV string `gorm:"->;type:tsvector GENERATED ALWAYS AS (jsonb_to_tsvector('english', data, '[\"string\"]')) STORED;"`
 }
 
 func (t TSV) Info() Info {
@@ -110,6 +109,48 @@ func (t TSV) NewList(data []Info) any {
 }
 
 func (t TSV) String() string {
+	b, _ := json.Marshal(t)
+	return string(b)
+}
+
+type TSVPerUser struct {
+	Model
+	UserName string `gorm:"index:idx2_,CreateAtUserpriority:1"`
+	TSV      string `gorm:"->;type:tsvector GENERATED ALWAYS AS (jsonb_to_tsvector('english', data, '[\"string\"]')) STORED; index "`
+}
+
+func (t TSVPerUser) Info() Info {
+	return Info{
+		User:      t.UserName,
+		Data:      t.Data,
+		Timestamp: t.Timestamp,
+	}
+}
+
+func (t TSVPerUser) New(info Info) any {
+	me := TSVPerUser{}
+	me.UserName = info.User
+	me.Data = info.Data
+	me.Timestamp = info.Timestamp
+
+	return &me
+}
+
+func (t TSVPerUser) NewList(data []Info) any {
+	var list []TSVPerUser
+	for _, v := range data {
+		list = append(list, TSVPerUser{
+			Model: Model{
+				UserName:  v.User,
+				Data:      v.Data,
+				Timestamp: v.Timestamp,
+			},
+		})
+	}
+	return &list
+}
+
+func (t TSVPerUser) String() string {
 	b, _ := json.Marshal(t)
 	return string(b)
 }

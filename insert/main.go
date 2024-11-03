@@ -109,7 +109,7 @@ func insert(baseUrl string, testCases, users []string) {
 	var wg sync.WaitGroup
 
 	rateLimiter := LogPerXMessagesSend(
-		NewLimiter(50),
+		NewLimiter(60),
 		2000,
 	)
 
@@ -130,7 +130,7 @@ func insertPerUser(
 	refTime time.Time,
 	rateLimiter Limiter,
 ) {
-	for v := range sendNPerTime(16, user, timeIter(refTime.Add(-10*time.Hour), refTime, 10*time.Millisecond)) {
+	for v := range sendNPerTime(2, user, timeIter(refTime.Add(-10*time.Hour), refTime, 10*time.Millisecond)) {
 		if data, err := json.Marshal(v); err != nil {
 			slog.Error("fail to encode data",
 				"error", err.Error(),

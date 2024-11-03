@@ -12,6 +12,27 @@ import (
 	"time"
 )
 
+var rateLimiter <-chan bool
+
+func limit(wait time.Duration, limit int) <-chan bool {
+	limiter := make(chan bool, limit)
+
+	go func() {
+		for {
+			gogo := true
+			for cont := 0; gogo && cont < limit; cont++ {
+				select {
+				case limiter <- true:
+				default:
+					gogo = false
+				}
+			}
+			time.Sleep(wait)
+		}
+	}()
+	return limiter
+}
+
 type config struct {
 	Secret string `env:"API_SECRET" envDefault:"shhhh"`
 }
@@ -24,6 +45,9 @@ func init() {
 	} else {
 		slog.Info("config  loaded")
 	}
+
+	rateLimiter = limit(100*time.Millisecond, 6)
+
 }
 
 var baseUrl = "https://test.bible.clementineleaf.top/stress"
@@ -80,6 +104,7 @@ func insertPerUser(user, url string, refTime time.Time) {
 	counter := 0
 
 	for v := range timeIter(refTime.Add(-10*time.Hour), refTime, 10*time.Millisecond) {
+		<-rateLimiter
 		info := Info{
 			User:      user,
 			Timestamp: v,

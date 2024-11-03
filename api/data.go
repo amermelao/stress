@@ -23,13 +23,27 @@ func (s DBSecrets) String() string {
 }
 
 func NewConnection(s DBSecrets) (*gorm.DB, error) {
-	return gorm.Open(
+	db, err := gorm.Open(
 		postgres.New(postgres.Config{
 			DSN:                  s.String(),
 			PreferSimpleProtocol: true,
 		}),
 		&gorm.Config{},
 	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	sqlDB, err := db.DB()
+
+	if err != nil {
+		return nil, err
+	}
+
+	sqlDB.SetMaxOpenConns(200)
+
+	return db, err
 }
 
 type Info struct {

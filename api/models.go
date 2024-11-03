@@ -54,6 +54,20 @@ func (t NoIndex) New(info Info) any {
 	return &me
 }
 
+func (t NoIndex) NewList(data []Info) any {
+	var list []NoIndex
+	for _, v := range data {
+		list = append(list, NoIndex{
+			Model: Model{
+				UserName:  v.User,
+				Data:      v.Data,
+				Timestamp: v.Timestamp,
+			},
+		})
+	}
+	return &list
+}
+
 func (t NoIndex) String() string {
 	b, _ := json.Marshal(t)
 	return string(b)
@@ -79,6 +93,20 @@ func (t TSV) New(info Info) any {
 	me.Timestamp = info.Timestamp
 
 	return &me
+}
+
+func (t TSV) NewList(data []Info) any {
+	var list []TSV
+	for _, v := range data {
+		list = append(list, TSV{
+			Model: Model{
+				UserName:  v.User,
+				Data:      v.Data,
+				Timestamp: v.Timestamp,
+			},
+		})
+	}
+	return &list
 }
 
 func (t TSV) String() string {
@@ -107,6 +135,20 @@ func (t CreateAtUser) New(info Info) any {
 	me.Timestamp = info.Timestamp
 
 	return &me
+}
+
+func (t CreateAtUser) NewList(data []Info) any {
+	var list []CreateAtUser
+	for _, v := range data {
+		list = append(list, CreateAtUser{
+			Model: Model{
+				UserName:  v.User,
+				Data:      v.Data,
+				Timestamp: v.Timestamp,
+			},
+		})
+	}
+	return &list
 }
 
 func (t CreateAtUser) String() string {

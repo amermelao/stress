@@ -35,7 +35,7 @@ func NewLimiter(limitPerSecond int) Limiter {
 		divider := int(time.Second / wait)
 		prosPectLimit := limitPerSecond / divider
 
-		if (limitPerSecond - prosPectLimit*divider) <= 1 {
+		if (limitPerSecond - prosPectLimit*divider) < 1 {
 			updateInterval = wait
 			auxLimit = prosPectLimit
 
@@ -68,7 +68,7 @@ func NewLimiter(limitPerSecond int) Limiter {
 
 type config struct {
 	Secret  string `env:"API_SECRET" envDefault:"shhhh"`
-	BaseUrl string `env:"API_BASE_URL" envDefault:"https://example.com"`
+	BaseUrl string `env:"API_BASE_URL" envDefault:"http://localhost:9090"`
 }
 
 var cfg config
@@ -130,14 +130,8 @@ func insertPerUser(
 	refTime time.Time,
 	rateLimiter Limiter,
 ) {
-	for v := range timeIter(refTime.Add(-10*time.Hour), refTime, 10*time.Millisecond) {
-		info := Info{
-			User:      user,
-			Timestamp: v,
-			Data:      randomData(),
-		}
-
-		if data, err := json.Marshal(info); err != nil {
+	for v := range sendNPerTime(16, user, timeIter(refTime.Add(-10*time.Hour), refTime, 10*time.Millisecond)) {
+		if data, err := json.Marshal(v); err != nil {
 			slog.Error("fail to encode data",
 				"error", err.Error(),
 			)
@@ -150,7 +144,7 @@ func insertPerUser(
 func submitJson(data []byte, baseUrl string, testCases []string, rateLimiter Limiter) {
 	for _, name := range testCases {
 		<-rateLimiter
-		url := fmt.Sprintf("%s/%s/add", baseUrl, name)
+		url := fmt.Sprintf("%s/%s/list/add", baseUrl, name)
 		if req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(data)); err != nil {
 			slog.Error("fail to send",
 				"error", err.Error(),
@@ -178,6 +172,31 @@ func timeIter(tFrom, tTo time.Time, delta time.Duration) func(func(time.Time) bo
 			}
 			jitter := time.Duration(rand.IntN(10) + 1)
 			iter = iter.Add(delta * jitter)
+		}
+	}
+}
+
+func sendNPerTime(n int, user string, iter func(func(time.Time) bool)) func(func([]Info) bool) {
+	return func(next func([]Info) bool) {
+		data := []Info{}
+
+		for lTime := range iter {
+			data = append(data, Info{
+				User:      user,
+				Timestamp: lTime,
+				Data:      randomData(),
+			})
+
+			if len(data) == n {
+				if !next(data) {
+					return
+				}
+				data = []Info{}
+			}
+		}
+
+		if len(data) > 0 {
+			next(data)
 		}
 	}
 }

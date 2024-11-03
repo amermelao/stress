@@ -45,7 +45,7 @@ tasks:
                         sh: go env GOARCH
     docker:
         cmds:
-            - docker-compose up -d
+            - docker compose up -d
     run-insert:
         cmds:
             - ./bin/insert

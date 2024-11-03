@@ -55,6 +55,7 @@ type Info struct {
 type Models interface {
 	Info() Info
 	New(Info) any
+	NewList([]Info) any
 	fmt.Stringer
 }
 
@@ -75,13 +76,19 @@ func Insert[E Models](db *gorm.DB, data Info) error {
 	return db.Create(rowd).Error
 }
 
+func InsertMany[E Models](db *gorm.DB, data []Info) error {
+	var row E
+	query := func(db *gorm.DB) *gorm.DB {
+		return db.Create(row.NewList(data))
+	}
+	return query(db).Error
+}
+
 func Get[S ~[]E, E Models](db *gorm.DB, user string, from, to time.Time) ([]Info, error) {
 	var data S
 	query := func(db *gorm.DB) *gorm.DB {
 		return db.Where("user_name = ? and timestamp > ? and timestamp < ?", user, from, to).Find(&data)
 	}
-
-	fmt.Println(db.ToSQL(query))
 	err := query(db).Error
 	if err != nil {
 		return nil, err

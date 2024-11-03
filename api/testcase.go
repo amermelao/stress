@@ -29,6 +29,7 @@ func (t TestCase[E]) Register(base *http.ServeMux) {
 	handler := http.NewServeMux()
 	handler.HandleFunc("GET /query", t.getQuery)
 	handler.HandleFunc("POST /add", t.addElement)
+	handler.HandleFunc("POST /list/add", t.addElements)
 	handler.HandleFunc("GET /users", t.allUsers)
 
 	slog.Info("add", "path", t.Name)
@@ -93,7 +94,28 @@ func (t TestCase[E]) addElement(writer http.ResponseWriter, request *http.Reques
 			writer.WriteHeader(http.StatusNoContent)
 		}
 	}
+}
 
+func (t TestCase[E]) addElements(writer http.ResponseWriter, request *http.Request) {
+	info := []Info{}
+	if err := json.NewDecoder(request.Body).Decode(&info); err != nil {
+		slog.Error("bad post",
+			"path", t.Name,
+			"error", err.Error(),
+		)
+		writer.WriteHeader(http.StatusBadRequest)
+	} else {
+		defer request.Body.Close()
+		if err := InsertMany[E](t.db, info); err != nil {
+			slog.Error("fail to insert",
+				"error", err.Error(),
+				"test", t.Name,
+			)
+			writer.WriteHeader(http.StatusInternalServerError)
+		} else {
+			writer.WriteHeader(http.StatusNoContent)
+		}
+	}
 }
 
 func (t TestCase[E]) allUsers(writer http.ResponseWriter, request *http.Request) {

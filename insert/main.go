@@ -14,20 +14,53 @@ import (
 
 type Limiter <-chan struct{}
 
-func NewLimiter(wait time.Duration, limit int) Limiter {
-	limiter := make(chan struct{}, limit)
+func NewLimiter(limitPerSecond int) Limiter {
+	if limitPerSecond < 1 {
+		panic("bro")
+	}
+
+	var limiter chan struct{}
+	var auxLimit int
+	var updateInterval time.Duration
+	options := [7]time.Duration{
+		time.Second,
+		time.Millisecond * 100,
+		time.Millisecond * 10,
+		time.Millisecond,
+		time.Microsecond * 100,
+		time.Microsecond * 10,
+		time.Microsecond,
+	}
+	for _, wait := range options {
+		divider := int(time.Second / wait)
+		prosPectLimit := limitPerSecond / divider
+
+		if (limitPerSecond - prosPectLimit*divider) <= 1 {
+			updateInterval = wait
+			auxLimit = prosPectLimit
+
+			slog.Info("limiter conf try",
+				"interval", wait,
+				"max", auxLimit,
+				"div", divider,
+			)
+		} else {
+			limiter = make(chan struct{}, auxLimit)
+			break
+		}
+	}
 
 	go func() {
 		for {
 			gogo := true
-			for cont := 0; gogo && cont < limit; cont++ {
+			for cont := 0; gogo && cont < auxLimit; cont++ {
 				select {
 				case limiter <- struct{}{}:
 				default:
 					gogo = false
 				}
 			}
-			time.Sleep(wait)
+			time.Sleep(updateInterval)
 		}
 	}()
 	return limiter
@@ -76,7 +109,7 @@ func insert(baseUrl string, testCases, users []string) {
 	var wg sync.WaitGroup
 
 	rateLimiter := LogPerXMessagesSend(
-		NewLimiter(100*time.Millisecond, 20),
+		NewLimiter(50),
 		2000,
 	)
 
@@ -186,7 +219,7 @@ func randomData() map[string]string {
 }
 
 func LogPerXMessagesSend(limiter Limiter, perXMsg int) Limiter {
-	proxyLimiter := make(chan struct{}, 5)
+	proxyLimiter := make(chan struct{}, 1)
 	go func() {
 		count := 0
 		for {

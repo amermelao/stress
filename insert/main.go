@@ -67,8 +67,10 @@ func NewLimiter(limitPerSecond int) Limiter {
 }
 
 type config struct {
-	Secret  string `env:"API_SECRET" envDefault:"shhhh"`
-	BaseUrl string `env:"API_BASE_URL" envDefault:"http://localhost:9090"`
+	Secret    string `env:"API_SECRET" envDefault:"shhhh"`
+	BaseUrl   string `env:"API_BASE_URL" envDefault:"http://localhost:9090"`
+	Rate      int    `env:"API_RATE" envDefault:"20"`
+	BatchSize int    `env:"API_BATCH_SIZE" envDefault:"2"`
 }
 
 var cfg config
@@ -109,7 +111,7 @@ func insert(baseUrl string, testCases, users []string) {
 	var wg sync.WaitGroup
 
 	rateLimiter := LogPerXMessagesSend(
-		NewLimiter(60),
+		NewLimiter(cfg.Rate),
 		2000,
 	)
 
@@ -130,7 +132,7 @@ func insertPerUser(
 	refTime time.Time,
 	rateLimiter Limiter,
 ) {
-	for v := range sendNPerTime(2, user, timeIter(refTime.Add(-10*time.Hour), refTime, 10*time.Millisecond)) {
+	for v := range sendNPerTime(cfg.BatchSize, user, timeIter(refTime.Add(-10*time.Hour), refTime, 10*time.Millisecond)) {
 		if data, err := json.Marshal(v); err != nil {
 			slog.Error("fail to encode data",
 				"error", err.Error(),

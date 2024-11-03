@@ -62,12 +62,18 @@ type Models interface {
 var tableNames = []any{&NoIndex{}, &TSV{}, &CreateAtUser{}}
 
 func AddTables(db *gorm.DB) error {
-	err := db.AutoMigrate(tableNames...)
-	return err
+	if err := db.AutoMigrate(tableNames...); err != nil {
+		return err
+	}
+	return db.Exec("CREATE INDEX tsvs_gin ON tsvs USING gin(tsv)").Error
 }
 
 func DropTables(db *gorm.DB) error {
-	return db.Migrator().DropTable(tableNames...)
+	if err := db.Migrator().DropTable(tableNames...); err != nil {
+		return err
+	}
+
+	return db.Exec("DROP INDEX IF EXISTS tsvs_gin;").Error
 }
 
 func Insert[E Models](db *gorm.DB, data Info) error {

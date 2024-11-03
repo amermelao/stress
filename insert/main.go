@@ -12,17 +12,17 @@ import (
 	"time"
 )
 
-var rateLimiter <-chan bool
+type Limiter <-chan struct{}
 
-func limit(wait time.Duration, limit int) <-chan bool {
-	limiter := make(chan bool, limit)
+func NewLimiter(wait time.Duration, limit int) Limiter {
+	limiter := make(chan struct{}, limit)
 
 	go func() {
 		for {
 			gogo := true
 			for cont := 0; gogo && cont < limit; cont++ {
 				select {
-				case limiter <- true:
+				case limiter <- struct{}{}:
 				default:
 					gogo = false
 				}
@@ -46,18 +46,13 @@ func init() {
 	} else {
 		slog.Info("config  loaded")
 	}
-
-	rateLimiter = limit(100*time.Millisecond, 6)
-
 }
-
-var testNames = []string{"noindex", "tsv", "createatuser"}
 
 func main() {
 
 	users := []string{}
 	for range rand.IntN(100) + 1 {
-		users = append(users, randSeq(rand.IntN(10)+5))
+		users = append(users, randSeqNoSpace(rand.IntN(10)+5))
 	}
 
 	slog.Info("users")
@@ -65,15 +60,8 @@ func main() {
 		slog.Info(user)
 	}
 
-	var wg sync.WaitGroup
-	for _, name := range testNames {
-		wg.Add(1)
-		go func() {
-			insert(name, cfg.BaseUrl, users)
-			wg.Done()
-		}()
-	}
-	wg.Wait()
+	var testNames = []string{"noindex", "tsv", "createatuser"}
+	insert(cfg.BaseUrl, testNames, users)
 }
 
 type Info struct {
@@ -82,16 +70,20 @@ type Info struct {
 	Timestamp time.Time
 }
 
-func insert(name, baseUrl string, users []string) {
+func insert(baseUrl string, testCases, users []string) {
 	tNow := time.Now()
-	url := fmt.Sprintf("%s/%s/add", baseUrl, name)
 
 	var wg sync.WaitGroup
+
+	rateLimiter := LogPerXMessagesSend(
+		NewLimiter(100*time.Millisecond, 20),
+		2000,
+	)
 
 	for _, user := range users {
 		wg.Add(1)
 		go func() {
-			insertPerUser(user, url, tNow)
+			insertPerUser(user, baseUrl, testCases, tNow, rateLimiter)
 			wg.Done()
 		}()
 	}
@@ -99,11 +91,13 @@ func insert(name, baseUrl string, users []string) {
 	wg.Wait()
 }
 
-func insertPerUser(user, url string, refTime time.Time) {
-	counter := 0
-
+func insertPerUser(
+	user, baseUrl string,
+	testCases []string,
+	refTime time.Time,
+	rateLimiter Limiter,
+) {
 	for v := range timeIter(refTime.Add(-10*time.Hour), refTime, 10*time.Millisecond) {
-		<-rateLimiter
 		info := Info{
 			User:      user,
 			Timestamp: v,
@@ -114,7 +108,17 @@ func insertPerUser(user, url string, refTime time.Time) {
 			slog.Error("fail to encode data",
 				"error", err.Error(),
 			)
-		} else if req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(data)); err != nil {
+		} else {
+			submitJson(data, baseUrl, testCases, rateLimiter)
+		}
+	}
+}
+
+func submitJson(data []byte, baseUrl string, testCases []string, rateLimiter Limiter) {
+	for _, name := range testCases {
+		<-rateLimiter
+		url := fmt.Sprintf("%s/%s/add", baseUrl, name)
+		if req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(data)); err != nil {
 			slog.Error("fail to send",
 				"error", err.Error(),
 			)
@@ -129,15 +133,9 @@ func insertPerUser(user, url string, refTime time.Time) {
 			} else if response.StatusCode != http.StatusNoContent {
 				slog.Error("bad status code", "code", response.StatusCode)
 			}
-
-			if counter > 10_000 {
-				slog.Info("insert", "time", v.Format(time.RFC3339))
-			}
-			counter++
 		}
 	}
 }
-
 func timeIter(tFrom, tTo time.Time, delta time.Duration) func(func(time.Time) bool) {
 
 	return func(next func(timestamp time.Time) bool) {
@@ -161,6 +159,16 @@ func randSeq(n int) string {
 	return string(b)
 }
 
+var lettersNoSpace = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+
+func randSeqNoSpace(n int) string {
+	b := make([]rune, n)
+	for i := range b {
+		b[i] = lettersNoSpace[rand.IntN(len(lettersNoSpace))]
+	}
+	return string(b)
+}
+
 func randomData() map[string]string {
 	keys := rand.IntN(20) + 1
 
@@ -175,4 +183,25 @@ func randomData() map[string]string {
 	}
 
 	return data
+}
+
+func LogPerXMessagesSend(limiter Limiter, perXMsg int) Limiter {
+	proxyLimiter := make(chan struct{}, 5)
+	go func() {
+		count := 0
+		for {
+			v := <-limiter
+			proxyLimiter <- v
+			count++
+
+			if count >= perXMsg {
+				slog.Info("send messages",
+					"value", perXMsg,
+				)
+				count = 0
+			}
+		}
+	}()
+
+	return proxyLimiter
 }

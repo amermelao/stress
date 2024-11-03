@@ -46,6 +46,9 @@ tasks:
     docker:
         cmds:
             - docker-compose up -d
+    run-insert:
+        cmds:
+            - ./bin/insert
     build-env:
         internal: true
         cmds:

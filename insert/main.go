@@ -34,7 +34,8 @@ func limit(wait time.Duration, limit int) <-chan bool {
 }
 
 type config struct {
-	Secret string `env:"API_SECRET" envDefault:"shhhh"`
+	Secret  string `env:"API_SECRET" envDefault:"shhhh"`
+	BaseUrl string `env:"API_BASE_URL" envDefault:"https://example.com"`
 }
 
 var cfg config
@@ -49,8 +50,6 @@ func init() {
 	rateLimiter = limit(100*time.Millisecond, 6)
 
 }
-
-var baseUrl = "https://test.bible.clementineleaf.top/stress"
 
 var testNames = []string{"noindex", "tsv", "createatuser"}
 
@@ -70,7 +69,7 @@ func main() {
 	for _, name := range testNames {
 		wg.Add(1)
 		go func() {
-			insert(name, users)
+			insert(name, cfg.BaseUrl, users)
 			wg.Done()
 		}()
 	}
@@ -83,7 +82,7 @@ type Info struct {
 	Timestamp time.Time
 }
 
-func insert(name string, users []string) {
+func insert(name, baseUrl string, users []string) {
 	tNow := time.Now()
 	url := fmt.Sprintf("%s/%s/add", baseUrl, name)
 
